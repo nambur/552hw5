@@ -18,8 +18,8 @@ module mem_system(/*AUTOARG*/
    input        rst;
    
    output reg [15:0] DataOut;
-   output reg Done;
-   output reg Stall;
+   output Done;
+   output Stall;
    output CacheHit;
    output err;
 
@@ -30,7 +30,7 @@ module mem_system(/*AUTOARG*/
    localparam IDLE = 4'b0000;  // idle state signaling done
    localparam WR_CMPCACHE = 4'b0001;   // comparing data in cache on a wr request
    localparam WR_WRDIRTY = 4'b0010;    // data in cache was dirty, write it to memory
-   localparam WR_WRCACHE = 4'b0011;    // write the data from input to the cache, set as dirty
+   localparam WR_WRCACHE = 4'b0011;    // write the data from input to the memory
    localparam RD_CMPCACHE = 4'b0100;   // comparing data in cache on a rd request
    localparam RD_HIT = 4'b0101;        // cache hit on a read, return data from cache
    localparam RD_WRDIRTY = 4'b0110;    // no cache hit and data in slot is valid and dirty, write it to memory
@@ -38,31 +38,33 @@ module mem_system(/*AUTOARG*/
    localparam RD_WRCACHE = 4'b1000;// write data returned from memory to cache
 
    // cache wires
-   wire cEnable, cComp, cWrite, cTag_out, cDirty, cValid, cErr;
+   wire cDirty, cValid, cErr;
+   wire [4:0] cTag_out;
    wire [15:0] cDataOut;
    reg [15:0] cDataIn;
-   reg cValidIn;
+   reg cValidIn, cEnable, cComp, cWrite;
 
    // four_bank_mem wires
    wire mStall, mErr;
    reg mWr, mRd; 
-   wire [15:0] mDataOut,mDataIn;
+   wire [15:0] mDataOut;
    reg [15:0] mAddr;
    wire [3:0] mBusy;
 
    // fsm wires
-   reg nxState;
-   reg state;
+   reg [3:0] nxState;
+   wire [3:0] state;
    reg nxStall, nxStall_IDLE;
    reg nxDone, nxDone_WR_CMPCACHE;
    wire Doneff, Stallff; 
    reg DoneCheck, rdDone, StallCheck, rdStall;
-   reg [3:0] requestType, nxSt_WR_CMPCACHE, nxSt_WR_WRDIRTY, nxSt_RD_CMPCACHE, nxSt_RD_WRDIRTY; // determines the next state 
-   wire [15:0] mDataOut;
+   reg [3:0] requestType, nxSt_WR_CMPCACHE, nxSt_RD_CMPCACHE; // determines the next state 
+   wire [3:0] nxSt_WR_WRDIRTY, nxSt_RD_WRDIRTY, nxSt_WR_WRCACHE;
+   reg [15:0] mDataIn;
 
-   dff ff0(.q(state), .d(nxState), .clk(clk), .rst(rst));
+   reg4bit streg(.clk(clk), .rst(rst), .en(1'b1), .in(nxState), .out(state));
    dff ff1(.q(Stallff), .d(nxStall), .clk(clk), .rst(rst));
-   dff ff1(.q(Doneff), .d(nxDone), .clk(clk), .rst(rst));
+   dff ff2(.q(Doneff), .d(nxDone), .clk(clk), .rst(rst));
 
    assign Done = (DoneCheck) ? 1'b1 : Doneff;
    assign Stall = (StallCheck) ? 1'b0 : Stallff;
@@ -71,14 +73,14 @@ module mem_system(/*AUTOARG*/
    // and createdump inputs to the 
    // cache modules
 
-   assign err = mErr | eErr;
+   assign err = mErr | cErr;
 
    cache #(0) cache0(.enable(cEnable), .clk(clk), .rst(rst), .createdump(createdump), 
                     .tag_in(Addr[15:11]), .index(Addr[10:3]), .offset(Addr[2:0]), .data_in(cDataIn),
                     .comp(cComp), .write(cWrite), .valid_in(cValidIn), .tag_out(cTag_out), .data_out(cDataOut),
                     .hit(CacheHit), .dirty(cDirty), .valid(cValid), .err(cErr));
 
-   four_bank_mem fmem(.clk(clk), .rst(rst), .createdump(createdump), .addr(mAddr), .data_in(cDataOut), .wr(mWr), .rd(mRd),
+   four_bank_mem fmem(.clk(clk), .rst(rst), .createdump(createdump), .addr(mAddr), .data_in(mDataIn), .wr(mWr), .rd(mRd),
                     .data_out(mDataOut), .stall(mStall), .busy(mBusy), .err(mErr));
 
    // determines the next state from IDLE and sets up the values for the cache
@@ -106,14 +108,13 @@ module mem_system(/*AUTOARG*/
    // determines the next state from WR_CMPCACHE
    always @(*) begin
       nxDone_WR_CMPCACHE = 1'b0;
-      nxStall_WR_CMPCACHE = 1'b1;
       
       casex ({cValid, cDirty, CacheHit})
          3'b110: nxSt_WR_CMPCACHE = WR_WRDIRTY;
+         3'b100: nxSt_WR_CMPCACHE = WR_WRCACHE;
          3'b1x1: begin
             nxSt_WR_CMPCACHE = IDLE;
             nxDone_WR_CMPCACHE = 1'b1;
-            nxStall_WR_CMPCACHE = 1'b0;
          end
          3'b0xx: nxSt_WR_CMPCACHE = WR_WRCACHE;
          default: begin
@@ -124,19 +125,19 @@ module mem_system(/*AUTOARG*/
    end
 
    // determins the next state from WR_WRDIRTY
-   assign nxSt_WR_WRDIRTY = (mStall) ? WR_WRDIRTY : WR_CACHE;
+   assign nxSt_WR_WRDIRTY = (mStall) ? WR_WRDIRTY : WR_WRCACHE;
 
    // determins the next state from RD_CMPCACHE
    always @(*) begin
       rdDone = 1'b0;
-      rdStall = 1'b1;
+      rdStall = 1'b0;
 
       casex({cValid, cDirty, CacheHit})
          3'b110: nxSt_RD_CMPCACHE = RD_WRDIRTY;
          3'b1x1: begin
             nxSt_RD_CMPCACHE = IDLE;
             rdDone = 1'b1;
-            rdStall = 1'b0;
+            rdStall = 1'b1;
          end
          3'b0xx: nxSt_RD_CMPCACHE = RD_RDMEM;
          3'b100: nxSt_RD_CMPCACHE = RD_RDMEM;
@@ -151,9 +152,15 @@ module mem_system(/*AUTOARG*/
    // determins the next state from RD_WRDIRTY
    assign nxSt_RD_WRDIRTY = (mStall) ? RD_WRDIRTY : RD_RDMEM;
 
-   // determins the next state from RD_WRDIRTY
+   // determins the next state from RD_RDMEM
    assign nxSt_RD_RDMEM = (mStall) ? RD_RDMEM : IDLE;
    assign rdDone_RDMEM = (mStall) ? 1'b0 : 1'b1;
+
+   // determins the next state from WR_WRCACHE
+   assign nxSt_WR_WRCACHE = (mStall) ? WR_WRCACHE : IDLE;
+
+   // waiting for a number of cycles
+   dff ff3(.q(waitff), .d(waitin), .clk(clk), .rst(rst));
 
    always @(*) begin
       nxDone = 1'b0;
@@ -169,6 +176,7 @@ module mem_system(/*AUTOARG*/
       DoneCheck = 1'b0;
       StallCheck = 1'b0;
       mAddr = {cTag_out,Addr[10:0]};
+      mDataIn = cDataOut;
 
       casex (state)
          IDLE: begin
@@ -180,7 +188,7 @@ module mem_system(/*AUTOARG*/
             cComp = 1'b1;
             cWrite = 1'b1;
             nxDone = nxDone_WR_CMPCACHE;
-            nxStall = nxStall_WR_CMPCACHE;
+            nxStall = ~nxDone_WR_CMPCACHE;
             nxState = nxSt_WR_CMPCACHE;
          end
          WR_WRDIRTY: begin
@@ -190,18 +198,19 @@ module mem_system(/*AUTOARG*/
             nxState = nxSt_WR_WRDIRTY;
          end
          WR_WRCACHE: begin
-            cEnable = 1'b1;
-            cWrite = 1'b1;
-            cValidIn = 1'b1;
-            nxStall = 1'b0;
-            nxDone = 1'b1;
-            nxState = IDLE;
+            mWr = 1'b1;
+            nxDone = (nxSt_WR_WRCACHE == IDLE) ? 1'b1 : 1'b0;
+            nxStall= (nxSt_WR_WRCACHE == IDLE) ? 1'b0 : 1'b1;
+            mAddr = Addr;
+            mDataIn = DataIn;
+            nxState = nxSt_WR_WRCACHE;
          end
          RD_CMPCACHE: begin
             cEnable = 1'b1;
             cComp = 1'b1;
             DoneCheck = rdDone;
             StallCheck = rdStall;
+            nxState = nxSt_RD_CMPCACHE;
          end
          RD_WRDIRTY: begin
             cEnable = 1'b1;
