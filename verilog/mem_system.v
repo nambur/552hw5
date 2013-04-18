@@ -26,13 +26,21 @@ module mem_system(/*AUTOARG*/
    /* data_mem = 1, inst_mem = 0 *
     * needed for cache parameter */
    parameter mem_type = 0;
-   
-   // your code here
 
+   // cache wires
+   wire cEnable, eComp, eWrite, eValid_in, eTag_out, eDirty, eValid, eErr;
+   
    // You must pass the mem_type parameter 
    // and createdump inputs to the 
    // cache modules
-   
+
+   cache #(0) cache0(.enable(cEnable), .clk(clk), .rst(rst), .createdump(createdump), 
+                    .tag_in(Addr[15:11]), .index(Addr[10:3]), .offset(Addr[2:0]), .data_in(DataIn),
+                    .comp(eComp), .write(eWrite), .valid_in(eValid_in), .tag_out(eTag_out), .data_out(DataOut),
+                    .hit(CacheHit), .dirty(eDirty), .valid(eValid), .err(eErr));
+
+
+
 endmodule // mem_system
 
    
