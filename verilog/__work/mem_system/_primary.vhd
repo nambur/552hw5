@@ -11,7 +11,8 @@ entity mem_system is
         rd_hit          : integer := 5;
         rd_wrdirty      : integer := 6;
         rd_rdmem        : integer := 7;
-        rd_wrcache      : integer := 8
+        rd_wait         : integer := 8;
+        rd_waitdone     : integer := 9
     );
     port(
         dataout         : out    vl_logic_vector(15 downto 0);

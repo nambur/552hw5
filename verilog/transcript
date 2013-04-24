@@ -1,4 +1,3 @@
-# vsim +addr_trace_file_name=mem2.addr -lib __work -c mem_system_perfbench 
 # //  ModelSim SE 5.8b Jan 01 2004 Linux 2.6.32-358.0.1.el6.x86_64
 # //
 # //  Copyright Model Technology, a Mentor Graphics Corporation company, 2004
@@ -7,34 +6,31 @@
 # //         CONFIDENTIAL AND PROPRIETARY INFORMATION WHICH IS THE
 # //        PROPERTY OF MENTOR GRAPHICS CORPORATION OR ITS LICENSORS.
 # //
-# Loading __work.mem_system_perfbench
-# Loading __work.mem_system_hier
-# Loading __work.clkrst
-# Loading __work.mem_system
-# Loading __work.reg4bit
-# Loading __work.dff_en
-# Loading __work.mux2_1
-# Loading __work.not1
-# Loading __work.nand2
-# Loading __work.dff
-# Loading __work.cache
-# Loading __work.memc
-# Loading __work.memv
-# Loading __work.four_bank_mem
-# Loading __work.final_memory
-# Loading __work.mem_system_ref
-run -all
-# Using trace file                                                                                                                                                                                                                                                        mem2.addr
-# LOG: ReQNum    1 Cycle        6 ReqCycle        3 Wr Addr 0x001e Value 0x0012 ValueRef 0x0012 HIT 0
-# 
-# LOG: ReQNum    2 Cycle        9 ReqCycle        6 Wr Addr 0x301a Value 0x0011 ValueRef 0x0011 HIT 0
-# 
-# LOG: ReqNum    3 Cycle       11 ReqCycle        9 Rd Addr 0x001e Value 0x0000 ValueRef 0x0012 HIT 1
-# 
-# ERROR Ref: 0x0012 DUT: 0x0000
-# LOG: Done all Requests:          3 Replies:          3 Cycles:         11 Hits:          1
-# Test status: FAIL
-# Break at mem_system_perfbench.v line 200
-# Stopped at mem_system_perfbench.v line 200 
-# 
-# <EOF> 
+# vsim -view dataset=dump.wlf 
+# dump.wlf opened as dataset "dataset"
+view wave
+# .wave
+do /afs/cs.wisc.edu/u/a/m/ambur/private/ece552/552hw5/verilog/wave.do
+# ** Error: No objects found matching "/mem_system_perfbench/DUT/Rd"
+# Executing ONERROR command at macro /afs/cs.wisc.edu/u/a/m/ambur/private/ece552/552hw5/verilog/wave.do line 3
+# ** Error: No objects found matching "/mem_system_perfbench/DUT/Wr"
+# Executing ONERROR command at macro /afs/cs.wisc.edu/u/a/m/ambur/private/ece552/552hw5/verilog/wave.do line 4
+# ** Error: No objects found matching "/mem_system_perfbench/DUT/Done"
+# Executing ONERROR command at macro /afs/cs.wisc.edu/u/a/m/ambur/private/ece552/552hw5/verilog/wave.do line 5
+# ** Error: No objects found matching "/mem_system_perfbench/DUT/Stall"
+# Executing ONERROR command at macro /afs/cs.wisc.edu/u/a/m/ambur/private/ece552/552hw5/verilog/wave.do line 6
+# ** Error: No objects found matching "/mem_system_perfbench/DUT/CacheHit"
+# Executing ONERROR command at macro /afs/cs.wisc.edu/u/a/m/ambur/private/ece552/552hw5/verilog/wave.do line 7
+# ** Error: No objects found matching "/mem_system_perfbench/DUT/err"
+# Executing ONERROR command at macro /afs/cs.wisc.edu/u/a/m/ambur/private/ece552/552hw5/verilog/wave.do line 8
+# ** Error: No objects found matching "/mem_system_perfbench/DUT/clk"
+# Executing ONERROR command at macro /afs/cs.wisc.edu/u/a/m/ambur/private/ece552/552hw5/verilog/wave.do line 9
+# ** Error: No objects found matching "/mem_system_perfbench/DUT/rst"
+# Executing ONERROR command at macro /afs/cs.wisc.edu/u/a/m/ambur/private/ece552/552hw5/verilog/wave.do line 10
+# ** Error: No objects found matching "/mem_system_perfbench/DUT/DataOut"
+# Executing ONERROR command at macro /afs/cs.wisc.edu/u/a/m/ambur/private/ece552/552hw5/verilog/wave.do line 11
+# ** Error: No objects found matching "/mem_system_perfbench/DUT/DataIn"
+# Executing ONERROR command at macro /afs/cs.wisc.edu/u/a/m/ambur/private/ece552/552hw5/verilog/wave.do line 12
+# ** Error: No objects found matching "/mem_system_perfbench/DUT/Addr"
+# Executing ONERROR command at macro /afs/cs.wisc.edu/u/a/m/ambur/private/ece552/552hw5/verilog/wave.do line 13
+write format wave -window .wave /afs/cs.wisc.edu/u/a/m/ambur/private/ece552/552hw5/verilog/wave.do

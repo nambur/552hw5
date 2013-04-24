@@ -103,6 +103,7 @@ module mem_system_randbench(/*AUTOARG*/);
             if (DataOut != DataOut_ref) begin
                $display("ERROR");
                test_success = 1'b0;
+               $stop;
             end
          end
          if (Wr) begin
