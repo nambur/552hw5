@@ -68,7 +68,11 @@ module mem_system_randbench(/*AUTOARG*/);
    integer n_cache_hits_total;
    integer req_cycle;
    reg test_success;
-   
+
+/* NAA NAA */
+   integer naaFlag;
+/* NAA NAA END */
+
    
    initial begin
       Rd = 1'b0;
@@ -81,6 +85,11 @@ module mem_system_randbench(/*AUTOARG*/);
       n_cache_hits = 0;
       n_cache_hits_total = 0;
       test_success = 1'b1;
+
+/* NAA NAA */
+      naaFlag = 0;
+/* NAA NAA END */
+
    end
    
    always @ (posedge clk) begin
@@ -102,9 +111,13 @@ module mem_system_randbench(/*AUTOARG*/);
                      DataOut_ref, CacheHit);
             if (DataOut != DataOut_ref) begin
                $display("ERROR");
-               test_success = 1'b0;
+               /* NAA NAA */
                $stop;
+               /* NAA NAA END */
+               test_success = 1'b0;
             end
+
+
          end
          if (Wr) begin
             $display("LOG: ReqNum %4d Cycle %8d ReqCycle %8d Wr Addr 0x%04x Value 0x%04x ValueRef 0x%04x Hit: %1d\n",
@@ -122,13 +135,19 @@ module mem_system_randbench(/*AUTOARG*/);
                   test_success = 1'b0;
                end
             end
+
+/* NAA NAA */
+            if (Addr == 16'h6762) begin
+                naaFlag = 1;
+            end
+/* NAA NAA END */
+
          end
          Rd = 1'd0;
          Wr = 1'd0;
       end // if (Done_ref)
 
       // change inputs for next cycle
-      
       #85;
       if (!rst && (!Stall)) begin      
          if (n_requests < 1000) begin
@@ -337,3 +356,4 @@ module mem_system_randbench(/*AUTOARG*/);
    
 endmodule // mem_system_randbench
 // DUMMY LINE FOR REV CONTROL :9:
+

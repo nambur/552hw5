@@ -27,27 +27,30 @@ module mem_system(/*AUTOARG*/
     * needed for cache parameter */
    parameter mem_type = 0;
 
-   localparam IDLE =         5'b00000;  // idle state signaling done
-   localparam WR_CMPCACHE =  5'b00001;   // comparing data in cache on a wr request
-   localparam WR_WRDIRTY0 =  5'b00010;    // data in cache was dirty, write it to memory
-   localparam WR_WRDIRTY1 =  5'b00011;    // data in cache was dirty, write it to memory
-   localparam WR_WRDIRTY2 =  5'b00100;    // data in cache was dirty, write it to memory
-   localparam WR_WRDIRTY3 =  5'b00101;    // data in cache was dirty, write it to memory
-   localparam WR_WRCACHE0 =  5'b00110;    // write the data from input to the memory
-   localparam WR_WRCACHE1 =  5'b00111;    // write the data from input to the memory
-   localparam WR_WRCACHE2 =  5'b01000;    // write the data from input to the memory
-   localparam WR_WRCACHE3 =  5'b01001;    // write the data from input to the memory
-   localparam RD_CMPCACHE =  5'b01010;   // comparing data in cache on a rd request
-   localparam RD_WRDIRTY0 =  5'b01011;    // no cache hit and data in slot is valid and dirty, write it to memory
-   localparam RD_WRDIRTY1 =  5'b01100;    // no cache hit and data in slot is valid and dirty, write it to memory
-   localparam RD_WRDIRTY2 =  5'b01101;    // no cache hit and data in slot is valid and dirty, write it to memory
-   localparam RD_WRDIRTY3 =  5'b01110;    // no cache hit and data in slot is valid and dirty, write it to memory
-   localparam RD_RDMEM0 =    5'b01111;      // read input addr from memory
-   localparam RD_RDMEM1 =    5'b10000;      // read input addr from memory
-   localparam RD_RDMEM2 =    5'b10001;      // read input addr from memory
-   localparam RD_RDMEM3 =    5'b10010;      // read input addr from memory
-   localparam RD_WAIT =      5'b10011;       // write data returned from memory to cache
-   localparam RD_WAITDONE =  5'b10100;
+   localparam IDLE =          5'b00000;  // idle state signaling done
+   localparam WR_CMPCACHE =   5'b00001;   // comparing data in cache on a wr request
+   localparam WR_WRDIRTY0 =   5'b00010;    // data in cache was dirty, write it to memory
+   localparam WR_WRDIRTY1 =   5'b00011;    // data in cache was dirty, write it to memory
+   localparam WR_WRDIRTY2 =   5'b00100;    // data in cache was dirty, write it to memory
+   localparam WR_WRDIRTY3 =   5'b00101;    // data in cache was dirty, write it to memory
+   localparam WR_WRMEM =      5'b00110;
+   localparam RDMEMWAIT =     5'b00111;
+   localparam WR_WRCACHE0 =   5'b01000;    // write the data from input to the memory
+   localparam WR_WRCACHE1 =   5'b01001;    // write the data from input to the memory
+   localparam WR_WRCACHE2 =   5'b01010;    // write the data from input to the memory
+   localparam WR_WRCACHE3 =   5'b01011;    // write the data from input to the memory
+   localparam WR_WRCACHE3WR = 5'b01100; 
+   localparam RD_CMPCACHE =   5'b01101;   // comparing data in cache on a rd request
+   localparam RD_WRDIRTY0 =   5'b01110;    // no cache hit and data in slot is valid and dirty, write it to memory
+   localparam RD_WRDIRTY1 =   5'b01111;    // no cache hit and data in slot is valid and dirty, write it to memory
+   localparam RD_WRDIRTY2 =   5'b10000;    // no cache hit and data in slot is valid and dirty, write it to memory
+   localparam RD_WRDIRTY3 =   5'b10001;    // no cache hit and data in slot is valid and dirty, write it to memory
+   localparam RD_RDMEM0 =     5'b10010;      // read input addr from memory
+   localparam RD_RDMEM1 =     5'b10011;      // read input addr from memory
+   localparam RD_RDMEM2 =     5'b10100;      // read input addr from memory
+   localparam RD_RDMEM3 =     5'b10101;      // read input addr from memory
+   localparam RD_RDMEM3WR =   5'b10110; 
+   localparam RD_RDMEMDONE =  5'b10111;
 
    // cache wires
    wire cDirty, cValid, cErr;
@@ -70,22 +73,24 @@ module mem_system(/*AUTOARG*/
    wire [2:0] wait1, waitIn;
    reg nxStall, nxStall_IDLE, startWait;
    reg nxDone, nxDone_WR_CMPCACHE;
-   wire Doneff, Stallff, cHit, rdDone_RDMEM, holdMemff, nxCacheHit;
-   reg DoneCheck, rdDone, StallCheck, rdStall, stallSet, nxholdMem;
+   wire Doneff, Stallff, cHit, holdMemff, nxCacheHit;
+   reg nxholdMem;
    reg [4:0] requestType, nxSt_WR_CMPCACHE, nxSt_RD_CMPCACHE; // determines the next state 
    wire [4:0] nxSt_WR_WRDIRTY0, nxSt_WR_WRDIRTY1, nxSt_WR_WRDIRTY2, nxSt_WR_WRDIRTY3;
    wire [4:0] nxSt_WR_WRCACHE0, nxSt_WR_WRCACHE1, nxSt_WR_WRCACHE2, nxSt_WR_WRCACHE3;
    wire [4:0] nxSt_RD_WRDIRTY0, nxSt_RD_WRDIRTY1, nxSt_RD_WRDIRTY2, nxSt_RD_WRDIRTY3;
-   wire [4:0] nxSt_RD_RDMEM;
+   wire [4:0] nxSt_RD_RDMEM0, nxSt_RD_RDMEM1, nxSt_RD_RDMEM2, nxSt_RD_RDMEM3;
+   wire [4:0] waitStOut, nxSt_WR_WRMEM;
+   reg [4:0] waitStNxt;
    reg [15:0] mDataIn;
    wire [15:0] mDataOutHold, cDataOutHold;
 
-   reg4bit streg(.clk(clk), .rst(rst), .en(1'b1), .in(nxState), .out(state));
+   reg5bit streg(.clk(clk), .rst(rst), .en(1'b1), .in(nxState), .out(state));
    dff ff1(.q(Stallff), .d(nxStall), .clk(clk), .rst(rst));
    dff ff2(.q(Doneff), .d(nxDone), .clk(clk), .rst(rst));
 
-   assign Done = (DoneCheck) ? 1'b1 : Doneff;
-   assign Stall = (StallCheck) ? stallSet : Stallff;
+   assign Done = Doneff;
+   assign Stall = Stallff;
    
    // You must pass the mem_type parameter 
    // and createdump inputs to the 
@@ -135,12 +140,12 @@ module mem_system(/*AUTOARG*/
       
       casex ({cValid, cDirty, cHit})
          3'b110: nxSt_WR_CMPCACHE = WR_WRDIRTY0;
-         3'b100: nxSt_WR_CMPCACHE = WR_WRCACHE0;
+         3'b100: nxSt_WR_CMPCACHE = WR_WRMEM;
          3'b1x1: begin
             nxSt_WR_CMPCACHE = IDLE;
             nxDone_WR_CMPCACHE = 1'b1;
          end
-         3'b0xx: nxSt_WR_CMPCACHE = WR_WRCACHE0;
+         3'b0xx: nxSt_WR_CMPCACHE = WR_WRMEM;
          default: begin
             nxSt_WR_CMPCACHE = 5'bxxxxx;
             nxDone_WR_CMPCACHE = 1'bx;
@@ -152,27 +157,16 @@ module mem_system(/*AUTOARG*/
    assign nxSt_WR_WRDIRTY0 = (mStall) ? WR_WRDIRTY0 : WR_WRDIRTY1;
    assign nxSt_WR_WRDIRTY1 = (mStall) ? WR_WRDIRTY1 : WR_WRDIRTY2;
    assign nxSt_WR_WRDIRTY2 = (mStall) ? WR_WRDIRTY2 : WR_WRDIRTY3;
-   assign nxSt_WR_WRDIRTY3 = (mStall) ? WR_WRDIRTY3 : WR_WRCACHE0;
+   assign nxSt_WR_WRDIRTY3 = (mStall) ? WR_WRDIRTY3 : WR_WRMEM;
 
    // determins the next state from RD_CMPCACHE
    always @(*) begin
-      rdDone = 1'b0;
-      rdStall = 1'b1;
-
       casex({cValid, cDirty, cHit})
          3'b110: nxSt_RD_CMPCACHE = RD_WRDIRTY0;
-         3'b1x1: begin
-            nxSt_RD_CMPCACHE = IDLE;
-            rdDone = 1'b1;
-            rdStall = 1'b0;
-         end
-         3'b0xx: nxSt_RD_CMPCACHE = RD_RDMEM;
-         3'b100: nxSt_RD_CMPCACHE = RD_RDMEM;
-         default: begin
-            nxSt_RD_CMPCACHE = 5'bxxxxx;
-            rdDone = 1'bx;
-            rdStall = 1'bx;
-         end
+         3'b1x1: nxSt_RD_CMPCACHE = IDLE;
+         3'b0xx: nxSt_RD_CMPCACHE = RD_RDMEM0;
+         3'b100: nxSt_RD_CMPCACHE = RD_RDMEM0;
+         default: nxSt_RD_CMPCACHE = 5'bxxxxx;
       endcase
    end
 
@@ -180,22 +174,26 @@ module mem_system(/*AUTOARG*/
    assign nxSt_RD_WRDIRTY0 = (mStall) ? RD_WRDIRTY0 : RD_WRDIRTY1;
    assign nxSt_RD_WRDIRTY1 = (mStall) ? RD_WRDIRTY1 : RD_WRDIRTY2;
    assign nxSt_RD_WRDIRTY2 = (mStall) ? RD_WRDIRTY2 : RD_WRDIRTY3;
-   assign nxSt_RD_WRDIRTY3 = (mStall) ? RD_WRDIRTY3 : RD_RDMEM;
+   assign nxSt_RD_WRDIRTY3 = (mStall) ? RD_WRDIRTY3 : RD_RDMEM0;
 
    // determins the next state from RD_RDMEM
    // TODO: do write of whole cache line from mem to cache
-   assign nxSt_RD_RDMEM = (mStall | (|wait1)) ? RD_RDMEM : RD_WAIT;
-   assign rdDone_RDMEM = (mStall | (|wait1)) ? 1'b0 : 1'b1;
+   assign nxSt_RD_RDMEM0 = (mStall | (|wait1)) ? RD_RDMEM0 : RDMEMWAIT;
+   assign nxSt_RD_RDMEM1 = (mStall) ? RD_RDMEM1 : RDMEMWAIT;
+   assign nxSt_RD_RDMEM2 = (mStall) ? RD_RDMEM2 : RDMEMWAIT;
+   assign nxSt_RD_RDMEM3 = (mStall) ? RD_RDMEM3 : RDMEMWAIT;
+
+   // determins the next state from WR_WRCACHE
+   assign nxSt_WR_WRMEM = (mStall) ? WR_WRMEM : WR_WRCACHE0;
 
    // determins the next state from WR_WRCACHE
    // TODO: add a 1 wait state for reading like done with writing
-   assign nxSt_WR_WRCACHE0 = (mStall | ("some read wait var")) ? WR_WRCACHE0 : WR_WRCACHE1;
-   assign nxSt_WR_WRCACHE1 = (mStall | ("some read wait var")) ? WR_WRCACHE1 : WR_WRCACHE2;
-   assign nxSt_WR_WRCACHE2 = (mStall | ("some read wait var")) ? WR_WRCACHE2 : WR_WRCACHE3;
-   assign nxSt_WR_WRCACHE3 = (mStall | ("some read wait var")) ? WR_WRCACHE3 : IDLE;
+   assign nxSt_WR_WRCACHE0 = (mStall | ((Addr[2:0] == 3'b000) & (|wait1))) ? WR_WRCACHE0 : RDMEMWAIT;
+   assign nxSt_WR_WRCACHE1 = (mStall | ((Addr[2:0] == 3'b010) & (|wait1))) ? WR_WRCACHE1 : RDMEMWAIT;
+   assign nxSt_WR_WRCACHE2 = (mStall | ((Addr[2:0] == 3'b100) & (|wait1))) ? WR_WRCACHE2 : RDMEMWAIT;
+   assign nxSt_WR_WRCACHE3 = (mStall | ((Addr[2:0] == 3'b110) & (|wait1))) ? WR_WRCACHE3 : RDMEMWAIT;
 
-   // waiting for a number of cycles
-   dff ff3(.q(waitff), .d(waitin), .clk(clk), .rst(rst));
+   reg5bit reg5_0(.clk(clk), .rst(rst), .en(1'b1), .in(waitStNxt), .out(waitStOut));
 
    // write wait fsm (signal asserted for 4 cycles)
    reg3bit reg3_0(.clk(clk), .rst(rst), .en(1'b1), .in(waitIn), .out(wait1));
@@ -211,18 +209,16 @@ always @(*) begin
       cEnable = 1'b0;
       cComp = 1'b0;
       cWrite = 1'b0;
-      mWr = 1'b0;
-      mRd = 1'b0;
       cDataIn = DataIn;
       cValidIn = 1'b0;
-      DoneCheck = 1'b0;
-      StallCheck = 1'b0;
+      cOffset = Addr[2:0];
+      mWr = 1'b0;
+      mRd = 1'b0;
       mAddr = {cTag_out,Addr[10:0]};
       mDataIn = cDataOut;
       startWait = 1'b0;
-      stallSet = 1'b0;
       nxholdMem = 1'b0;
-      cOffset = Addr[2:0];
+      waitStNxt = IDLE;
 
       casex (state)
          IDLE: begin
@@ -242,20 +238,98 @@ always @(*) begin
             cOffset = 3'b000;
             mWr = 1'b1;
             mAddr = {cTag_out,Addr[10:3],3'b000};
+            startWait = (nxSt_WR_WRDIRTY0 == WR_WRDIRTY1) ? 1'b1 : 1'b0;
             nxStall = 1'b1;
             nxState = nxSt_WR_WRDIRTY0;
          end
-         WR_WRCACHE: begin
+         WR_WRDIRTY1: begin
+            cEnable = 1'b1;
+            cOffset = 3'b010;
             mWr = 1'b1;
-            cEnable = (nxSt_WR_WRCACHE == IDLE) ? 1'b1 : 1'b0;
-            cWrite = 1'b1;
-            cValidIn = 1'b1;
-            nxDone = (nxSt_WR_WRCACHE == IDLE) ? 1'b1 : 1'b0;
-            nxStall= (nxSt_WR_WRCACHE == IDLE) ? 1'b0 : 1'b1;
-            startWait = (nxSt_WR_WRCACHE == IDLE) ? 1'b1 : 1'b0;
+            mAddr = {cTag_out,Addr[10:3],3'b010};
+            startWait = (nxSt_WR_WRDIRTY1 == WR_WRDIRTY2) ? 1'b1 : 1'b0;
+            nxStall = 1'b1;
+            nxState = nxSt_WR_WRDIRTY1;
+         end
+         WR_WRDIRTY2: begin
+            cEnable = 1'b1;
+            cOffset = 3'b100;
+            mWr = 1'b1;
+            mAddr = {cTag_out,Addr[10:3],3'b100};
+            startWait = (nxSt_WR_WRDIRTY2 == WR_WRDIRTY3) ? 1'b1 : 1'b0;
+            nxStall = 1'b1;
+            nxState = nxSt_WR_WRDIRTY2;
+         end
+         WR_WRDIRTY3: begin
+            cEnable = 1'b1;
+            cOffset = 3'b110;
+            mWr = 1'b1;
+            mAddr = {cTag_out,Addr[10:3],3'b110};
+            startWait = (nxSt_WR_WRDIRTY3 == WR_WRCACHE0) ? 1'b1 : 1'b0;
+            nxStall = 1'b1;
+            nxState = nxSt_WR_WRDIRTY3;
+         end
+         WR_WRMEM: begin
+            mWr = 1'b1;
+            nxStall= 1'b1;
+            startWait = (nxSt_WR_WRMEM == WR_WRCACHE0) ? 1'b1 : 1'b0;
             mAddr = Addr;
             mDataIn = DataIn;
-            nxState = nxSt_WR_WRCACHE;
+            nxState = nxSt_WR_WRMEM;
+         end
+         RDMEMWAIT: begin
+            nxStall = 1'b1;
+            nxState = waitStOut;
+         end
+         WR_WRCACHE0: begin
+            mRd = 1'b1;
+            mAddr = {Addr[15:3], 3'b000};
+            waitStNxt = WR_WRCACHE1;
+            nxStall= 1'b1;
+            nxState = nxSt_WR_WRCACHE0;
+         end
+         WR_WRCACHE1: begin
+            cEnable = (waitStOut == IDLE) ? 1'b1 : 1'b0;
+            cWrite = 1'b1;
+            cDataIn = mDataOut;
+            cOffset = 3'b000;
+            mRd = 1'b1;
+            mAddr = {Addr[15:3], 3'b010};
+            waitStNxt = WR_WRCACHE2;
+            nxStall = 1'b1;
+            nxState = nxSt_WR_WRCACHE1;
+         end
+         WR_WRCACHE2: begin
+            cEnable = (waitStOut == IDLE) ? 1'b1 : 1'b0;
+            cWrite = 1'b1;
+            cDataIn = mDataOut;
+            cOffset = 3'b010;
+            mRd = 1'b1;
+            mAddr = {Addr[15:3], 3'b100};
+            waitStNxt = WR_WRCACHE3;
+            nxStall = 1'b1;
+            nxState = nxSt_WR_WRCACHE2;
+         end
+         WR_WRCACHE3: begin
+            cEnable = (waitStOut == IDLE) ? 1'b1 : 1'b0;
+            cWrite = 1'b1;
+            cDataIn = mDataOut;
+            cOffset = 3'b100;
+            mRd = 1'b1;
+            mAddr = {Addr[15:3], 3'b110};
+            waitStNxt = WR_WRCACHE3WR;
+            nxStall = 1'b1;
+            nxState = nxSt_WR_WRCACHE3;
+         end
+         WR_WRCACHE3WR: begin
+            cEnable = 1'b1;
+            cWrite = 1'b1;
+            cDataIn = mDataOut;
+            cOffset = 3'b110;
+            cValidIn = 1'b1;
+            nxStall = 1'b0;
+            nxDone = 1'b1;
+            nxState = IDLE;
          end
          RD_CMPCACHE: begin
             cEnable = 1'b1;
@@ -265,31 +339,96 @@ always @(*) begin
             nxState = nxSt_RD_CMPCACHE;
             nxholdMem = 1'b1;
          end
-         RD_WRDIRTY: begin
+         RD_WRDIRTY0: begin
             cEnable = 1'b1;
+            cOffset = 3'b000;
             mWr = 1'b1;
-            startWait = (nxSt_RD_WRDIRTY) ? 1'b1 : 1'b0;
+            mAddr = {cTag_out,Addr[10:3],3'b000};
+            startWait = (nxSt_RD_WRDIRTY0 == RD_WRDIRTY1) ? 1'b1 : 1'b0;
             nxStall = 1'b1;
-            nxState = nxSt_RD_WRDIRTY;
+            nxState = nxSt_RD_WRDIRTY0;
          end
-         RD_RDMEM: begin
-            mAddr = Addr;
+         RD_WRDIRTY1: begin
+            cEnable = 1'b1;
+            cOffset = 3'b010;
+            mWr = 1'b1;
+            mAddr = {cTag_out,Addr[10:3],3'b010};
+            startWait = (nxSt_RD_WRDIRTY1 == RD_WRDIRTY2) ? 1'b1 : 1'b0;
+            nxStall = 1'b1;
+            nxState = nxSt_RD_WRDIRTY1;
+         end
+         RD_WRDIRTY2: begin
+            cEnable = 1'b1;
+            cOffset = 3'b100;
+            mWr = 1'b1;
+            mAddr = {cTag_out,Addr[10:3],3'b100};
+            startWait = (nxSt_RD_WRDIRTY2 == RD_WRDIRTY3) ? 1'b1 : 1'b0;
+            nxStall = 1'b1;
+            nxState = nxSt_RD_WRDIRTY2;
+         end
+         RD_WRDIRTY3: begin
+            cEnable = 1'b1;
+            cOffset = 3'b110;
+            mWr = 1'b1;
+            mAddr = {cTag_out,Addr[10:3],3'b110};
+            startWait = (nxSt_RD_WRDIRTY3 == RD_RDMEM0) ? 1'b1 : 1'b0;
+            nxStall = 1'b1;
+            nxState = nxSt_RD_WRDIRTY3;
+         end
+         RD_RDMEM0: begin
             mRd = 1'b1;
-            nxState = nxSt_RD_RDMEM;
+            mAddr = {Addr[15:3],3'b000};
+            waitStNxt = RD_RDMEM1;
             nxStall = 1'b1;
+            nxState = nxSt_RD_RDMEM0;
          end
-         RD_WAIT: begin
-            nxState = RD_WAITDONE;
-            nxStall = 1'b1;
-            nxDone = 1'b0;
-         end
-         RD_WAITDONE: begin
-            nxState = IDLE;
+         RD_RDMEM1: begin
             cEnable = 1'b1;
             cWrite = 1'b1;
-            cValidIn = 1'b1;
-            nxDone = 1'b1;
+            cOffset = 3'b000;
             cDataIn = mDataOut;
+            mRd = 1'b1;
+            mAddr = {Addr[15:3],3'b010};
+            waitStNxt = RD_RDMEM2;
+            nxStall = 1'b1;
+            nxState = nxSt_RD_RDMEM1;
+         end
+         RD_RDMEM2: begin
+            cEnable = 1'b1;
+            cWrite = 1'b1;
+            cOffset = 3'b010;
+            cDataIn = mDataOut;
+            mRd = 1'b1;
+            mAddr = {Addr[15:3],3'b100};
+            waitStNxt = RD_RDMEM3;
+            nxStall = 1'b1;
+            nxState = nxSt_RD_RDMEM2;
+         end
+         RD_RDMEM3: begin
+            cEnable = 1'b1;
+            cWrite = 1'b1;
+            cOffset = 3'b100;
+            cDataIn = mDataOut;
+            mRd = 1'b1;
+            mAddr = {Addr[15:3],3'b110};
+            waitStNxt = RD_RDMEM3WR;
+            nxStall = 1'b1;
+            nxState = nxSt_RD_RDMEM3;
+         end
+         RD_RDMEM3WR: begin
+            cEnable = 1'b1;
+            cWrite = 1'b1;
+            cOffset = 3'b110;
+            cDataIn = mDataOut;
+            nxStall = 1'b1;
+            nxState = RD_RDMEMDONE;
+         end
+         RD_RDMEMDONE: begin
+            cEnable = 1'b1;
+            nxholdMem = 1'b1;
+            nxStall = 1'b0;
+            nxDone = 1'b1;
+            nxState = IDLE;
          end
          default: begin
             nxState = 4'bxxxx;
