@@ -1,4 +1,0 @@
-Synthesis Report:
-
-Total cell area:          69745.018417
-slack (VIOLATED)                                                  -0.09
